@@ -1,0 +1,20 @@
+# env
+.env
+*.env
+
+# logs
+*.log
+/var/log/
+/data/
+
+# grafana volumes
+grafana/
+loki/
+prometheus/
+
+# python
+__pycache__/
+*.pyc
+
+# system files
+.DS_Store
