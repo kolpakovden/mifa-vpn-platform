@@ -1,0 +1,13 @@
+[Unit]
+Description=Xray Exporter
+After=network.target xray.service
+
+[Service]
+Type=simple
+User=nobody
+Group=nogroup
+ExecStart=/usr/local/bin/xray-exporter --xray-endpoint=127.0.0.1:8080 --listen=0.0.0.0:9550
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

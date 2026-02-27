@@ -1,0 +1,90 @@
+{
+    "dns": {
+        "servers": [
+            "https+local://8.8.4.4/dns-query",
+            "https+local://8.8.8.8/dns-query",
+            "https+local://1.1.1.1/dns-query",
+            "localhost"
+        ]
+    },
+    "log": {
+        "loglevel": "info",
+        "access": "/var/log/xray/access.log",
+        "dnsLog": false
+    },
+    "routing": {
+        "rules": [
+            {
+                "domain": [
+                    "geosite:category-ads",
+                    "geosite:win-spy"
+                ],
+                "outboundTag": "block"
+            },
+            {
+                "ip": [
+                    "geoip:private"
+                ],
+                "outboundTag": "block",
+                "type": "field"
+            }
+        ]
+    },
+    "inbounds": [
+        {
+            "tag": "VLESS-Reality",
+            "listen": "0.0.0.0",
+            "port": 443,
+            "protocol": "vless",
+            "settings": {
+                "clients": [
+                    {
+                        "flow": "xtls-rprx-vision",
+                        "id": "uuid-пользователя-1",
+                        "email": "user@example.com"
+                    }
+                ],
+                "decryption": "none"
+            },
+            "streamSettings": {
+                "network": "tcp",
+                "security": "reality",
+                "realitySettings": {
+                    "show": false,
+                    "target": "www.example.com:443",
+                    "xver": 0,
+                    "spiderX": "/",
+                    "serverNames": [
+                        "www.example.com"
+                    ],
+                    "privateKey": "твой-private-key",
+                    "publicKey": "твой-public-key",
+                    "shortIds": [
+                        "твой-short-id"
+                    ]
+                }
+            },
+            "sniffing": {
+                "enabled": true,
+                "destOverride": [
+                    "http",
+                    "tls",
+                    "quic"
+                ]
+            }
+        }
+    ],
+    "outbounds": [
+        {
+            "protocol": "freedom",
+            "tag": "direct",
+            "settings": {
+                "domainStrategy": "ForceIPv4"
+            }
+        },
+        {
+            "protocol": "blackhole",
+            "tag": "block"
+        }
+    ]
+}

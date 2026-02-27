@@ -1,0 +1,14 @@
+[Unit]
+Description=Xray Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/MIFA-VPN
+ExecStart=/opt/MIFA-VPN/venv/bin/python /opt/MIFA-VPN/scripts/bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

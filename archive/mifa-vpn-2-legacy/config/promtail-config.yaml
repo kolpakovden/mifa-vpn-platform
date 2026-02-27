@@ -1,0 +1,24 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /var/lib/loki/positions.yaml
+
+clients:
+  - url: http://localhost:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: xray
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: xray
+          __path__: /var/log/xray/access.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\S+ \S+) from (?P<ip>\S+):\d+ accepted tcp:(?P<domain>[^\s]+):\d+ .+ email: (?P<email>\S+)'
+      - labels:
+          email:
+          domain:
+          ip:

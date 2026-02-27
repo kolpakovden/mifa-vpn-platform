@@ -1,0 +1,42 @@
+{
+  "dashboard": {
+    "title": "Активность пользователей",
+    "panels": [
+      {
+        "title": "Активность по пользователям",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum by (email) (count_over_time({job=\"xray\"}[5m]))",
+            "legendFormat": "{{email}}",
+            "datasource": "Loki"
+          }
+        ]
+      },
+      {
+        "title": "Топ доменов",
+        "type": "barchart",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (domain) (count_over_time({job=\"xray\"}[24h])))",
+            "legendFormat": "{{domain}}",
+            "datasource": "Loki"
+          }
+        ]
+      },
+      {
+        "title": "Логи в реальном времени",
+        "type": "logs",
+        "gridPos": {"h": 12, "w": 24, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "{job=\"xray\"}",
+            "datasource": "Loki"
+          }
+        ]
+      }
+    ]
+  }
+}
