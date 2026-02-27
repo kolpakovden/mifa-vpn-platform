@@ -1,78 +1,165 @@
 # MIFA VPN Platform
 
-Модульная платформа-установщик для **Xray (VLESS + Reality)** + **Telegram-бот админа** + **мониторинг (Grafana/Prometheus/Loki/Promtail)**.
+Production-ready self-hosted VPN platform built on Xray (VLESS + Reality)
+with integrated Telegram user management and full observability stack.
 
-> Историческая (pre-platform) версия сохранена в `archive/mifa-vpn-2-legacy`.
-
----
-
-## Что ставит
-
-### Core
-- Xray (systemd)
-- VLESS Reality конфиг **на порты**: `443, 8443, 2053, 2083, 50273`
-- Access log: `/var/log/xray/access.log`
-- State-файл для бота: `/etc/mifa/state.env`
-
-### Monitoring (Docker Compose)
-- Grafana (порт `3000`, логин/пароль по умолчанию `admin/admin`)
-- Prometheus (порт `9090`)
-- Loki (порт `3100`)
-- Promtail (читает `/var/log/xray/access.log`)
-
-### Bot
-- Telegram бот (systemd) с командами: `/add /list /del /key /restart`
-- Конфиги окружения:
-  - `/etc/mifa/state.env` (генерируется core)
-  - `/etc/mifa/bot.env` (токен/чат айди — заполняешь ты)
+> Историческая (pre-platform) версия  в `[archive/mifa-vpn-2-legacy](https://github.com/kolpakovden/mifa-vpn-legacy)`.
 
 ---
 
-## Быстрый старт
+## Features
 
-```bash
+- Xray Core (VLESS + Reality)
+- Multi-port configuration (443, 8443, 2053, 2083, 50273)
+- Telegram bot for user management
+- Monitoring stack (Grafana + Prometheus + Loki + Promtail)
+- Centralized state management
+- Fully containerized monitoring via Docker Compose
+- Idempotent installer (safe re-run)
+  
+---
+
+## Architecture
+Core Components
+1. Xray (Traffic Engine)
+  Xray-core powers the VPN layer using:
+  VLESS protocol
+  Reality TLS obfuscation
+  Multi-port inbounds
+  Structured access logging
+  Reality provides TLS camouflage without requiring certificates.
+
+2. Telegram Bot (Control Layer)
+  Built using:
+  python-telegram-bot
+Capabilities:
+```
+/add <user>
+/del <user>
+/list
+/key <user>
+/restart
+```
+Bot communicates directly with Xray config and reloads service safely.
+Runs as:
+```
+systemd service: mifa-xray-bot
+```
+3. Observability Stack (Monitoring)
+Fully containerized:
+  Grafana
+  Prometheus
+  Loki
+  Promtail
+All deployed via Docker Compose.
+
+---
+
+## Project Structure
+
+```
+mifa-vpn-platform/
+│
+├── cmd/
+│   └── install.sh
+│
+├── internal/
+│   ├── core.sh
+│   ├── bot.sh
+│   └── monitoring.sh
+│
+├── core/
+│   └── templates/
+│
+├── monitoring/
+│   ├── docker-compose.yml
+│   ├── loki-config.yaml
+│   ├── promtail-config.yaml
+│   └── dashboards/
+│
+├── bot/
+│   ├── bot.py
+│   └── systemd/
+│
+└── archive/
+    └── mifa-vpn-2-legacy/
+```
+
+---
+
+## Installation
+Install everything: 
+```
+sudo ./cmd/install.sh --all
+```
+Or modular:
+```
 sudo ./cmd/install.sh --core
 sudo ./cmd/install.sh --monitoring
 sudo ./cmd/install.sh --bot
 ```
 
-или одной командой:
+---
 
-```bash
-sudo ./cmd/install.sh --all
+## Configuration Files
+```
+| File                              | Purpose                  |
+| --------------------------------- | ------------------------ |
+| `/usr/local/etc/xray/config.json` | Xray config              |
+| `/etc/mifa/state.env`             | Generated platform state |
+| `/etc/mifa/bot.env`               | Telegram bot credentials |
+| `/var/log/xray/access.log`        | Traffic logs             |
 ```
 
-После установки бота заполни:
+---
 
-```bash
-sudo nano /etc/mifa/bot.env
-sudo systemctl restart mifa-xray-bot
+## Access
 ```
+| Service    | URL                     |
+| ---------- | ----------------------- |
+| Grafana    | `http://SERVER_IP:3000` |
+| Prometheus | `http://SERVER_IP:9090` |
+| Loki       | `http://SERVER_IP:3100` |
+```
+Default Grafana: 
+```
+admin / admin
+```
+---
+
+## Security Model
+- Reality-based TLS obfuscation
+- No exposed management panel
+- Telegram bot restricted by CHAT_ID
+- Sensitive data stored outside repository
+- Logs centralized but not publicly exposed
 
 ---
 
-## Команды установщика
-
-- `--core` — установить/обновить конфиг Xray
-- `--monitoring` — поднять мониторинг через Docker Compose
-- `--bot` — поставить Telegram-бота
-- `--all` — всё сразу
-- `--upgrade` — апгрейд стека (как было в каркасе)
-- `--uninstall` — удалить всё (как было в каркасе)
-
----
-
-## Полезные пути
-
-- Xray config: `/usr/local/etc/xray/config.json`
-- Xray logs: `/var/log/xray/access.log`
-- Platform state: `/etc/mifa/state.env`
-- Bot env: `/etc/mifa/bot.env`
-- Monitoring files: `/opt/mifa/monitoring`
+## Versioning
+```
+| Version | Description                      |
+| ------- | -------------------------------- |
+| v1.0.0  | First stable platform release    |
+| legacy  | Pre-platform experimental builds |
+```
+Semantic Versioning:
+        MAJOR.MINOR.PATCH
 
 ---
 
-## Замечания
+## Roadmap (Planned)
+- Multi-server cluster support
+- REST API layer
+- Web management panel
+- Role-based access control
+- Auto-backup of users
+- Usage-based billing hooks
+- Dockerized core mode
 
-- Если у тебя домен вместо IP, просто замени `SERVER_IP` в `/etc/mifa/state.env` на домен.
-- `DEFAULT_SNI` и `PORTS` для бота тоже лежат в `/etc/mifa/state.env`.
+---
+
+## ⚠️ Disclaimer
+For educational and private infrastructure use only.
+Ensure compliance with local laws.
+        
