@@ -9,7 +9,7 @@
 
 # grafana volumes
 grafana/
-loki/
+/loki/
 prometheus/
 
 # python
