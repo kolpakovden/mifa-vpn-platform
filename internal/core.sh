@@ -29,9 +29,14 @@ generate_config() {
   echo "Generating Xray Reality keys + config..."
 
   local KEYS PRIVATE PUBLIC UUID SHORT
-  KEYS=$(xray x25519)
-  PRIVATE=$(echo "$KEYS" | awk '/Private/{print $3}')
-  PUBLIC=$(echo "$KEYS" | awk '/Public/{print $3}')
+KEYS=$(xray x25519)
+PRIVATE=$(echo "$KEYS" | sed -n 's/^PrivateKey:[[:space:]]*//p; s/^Private:[[:space:]]*//p' | head -n1)
+
+# Public key: best effort (depends on xray build flags)
+PUBLIC=""
+if xray x25519 -h 2>&1 | grep -q -- "-i"; then
+  PUBLIC=$(xray x25519 -i "$PRIVATE" 2>/dev/null | sed -n 's/^PublicKey:[[:space:]]*//p; s/^Public:[[:space:]]*//p' | head -n1)
+fi
   UUID=$(xray uuid)
   SHORT=$(openssl rand -hex 8)
 
