@@ -27,10 +27,15 @@ install_bot() {
     cat > /etc/mifa/bot.env <<'EOF'
 # Fill these and then: systemctl restart mifa-xray-bot
 BOT_TOKEN=
+# Recommended: comma-separated Telegram user IDs who can управлять ботом
+ADMIN_IDS=
+# Optional: allow commands only from this chat/group id
 ALLOWED_CHAT_ID=
+# Optional: override host shown in links (else SERVER_IP from state.env)
+# SERVER_HOST=
 EOF
     chmod 600 /etc/mifa/bot.env
-    echo "Created /etc/mifa/bot.env (fill BOT_TOKEN + ALLOWED_CHAT_ID)"
+    echo "Created /etc/mifa/bot.env (fill BOT_TOKEN + ADMIN_IDS)"
   else
     echo "Found existing /etc/mifa/bot.env"
   fi
@@ -40,13 +45,8 @@ EOF
     echo "WARNING: /etc/mifa/state.env not found. Run --core first (or create state.env manually)."
   fi
 
-  # Allow the bot to restart xray without password
-  cat > /etc/sudoers.d/mifa-bot <<'EOF'
-# Allow mifa bot service to restart xray without password
-# (bot process runs as root by default in this minimal setup)
-%sudo ALL=(ALL) NOPASSWD: /bin/systemctl restart xray
-EOF
-  chmod 440 /etc/sudoers.d/mifa-bot
+  # NOTE: bot service in this setup runs as root (see systemd unit), so sudoers is not required.
+  # If you switch bot to a non-root user later, add a dedicated sudoers rule for restarting xray.
 
   # Install systemd unit
   cp "$BASE_DIR/bot/systemd/mifa-xray-bot.service" /etc/systemd/system/mifa-xray-bot.service
