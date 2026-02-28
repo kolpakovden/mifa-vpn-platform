@@ -37,9 +37,15 @@ generate_config() {
 
   cp "$BASE_DIR/core/templates/config.template.json" /usr/local/etc/xray/config.json
 
-  sed -i "s/__UUID__/$UUID/g" /usr/local/etc/xray/config.json
-  sed -i "s/__PRIVATE_KEY__/$PRIVATE/g" /usr/local/etc/xray/config.json
-  sed -i "s/__SHORT_ID__/$SHORT/g" /usr/local/etc/xray/config.json
+python3 - <<PY
+from pathlib import Path
+cfg = Path("/usr/local/etc/xray/config.json")
+s = cfg.read_text()
+s = s.replace("__UUID__", "$UUID")
+s = s.replace("__PRIVATE_KEY__", "$PRIVATE")
+s = s.replace("__SHORT_ID__", "$SHORT")
+cfg.write_text(s)
+PY
 
   write_state_env "$PUBLIC" "$SHORT"
 }
