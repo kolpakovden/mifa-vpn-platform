@@ -112,6 +112,29 @@ sudo ./cmd/install.sh --bot
 ```
 
 ---
+## Monitoring (Grafana + Prometheus + Loki + Promtail)
+
+Платформа включает мониторинг метрик и логов:
+
+- **Prometheus** собирает метрики (включая node-exporter).
+- **Grafana** — UI для метрик и логов.
+- **Loki** — хранилище логов.
+- **Promtail** — агент, который читает логи и отправляет их в Loki.
+
+### Endpoints
+- Grafana: `http://<server-ip>:3000`
+- Prometheus: `http://<server-ip>:9090`
+- Loki: `http://<server-ip>:3100`
+- Node Exporter: `http://<server-ip>:9100`
+
+> Рекомендуется ограничить доступ к Prometheus/Loki/Node Exporter на firewall уровне и оставить внешним только Grafana (или закрыть Grafana по IP).
+
+### Loki storage
+Loki настроен для single-node режима. Все данные (chunks/index/WAL/compactor) хранятся в `/var/lib/loki` (docker volume), чтобы избежать проблем с правами и рестартами.
+
+### Version pinning
+Monitoring-образы закреплены (pin) для воспроизводимых деплоев и чтобы избежать несовместимости конфигов при обновлениях.
+---
 
 ## Access
 ```
