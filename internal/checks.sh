@@ -1,5 +1,5 @@
 require_root() {
-  [[ "$EUID" -ne 0 ]] && { echo "Run as root"; exit 1; }
+  [[ "$EUID" -eq 0 ]] || { echo "Run as root"; exit 1; }
 }
 
 check_systemd() {
