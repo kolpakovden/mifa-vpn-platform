@@ -1,38 +1,84 @@
 # MIFA VPN Platform
 
-Production-ready self-hosted VPN platform built on Xray (VLESS + Reality)
-with integrated Telegram user management and full observability stack.
+MIFA VPN is available in two editions:
 
-> Историческая (pre-platform) версия  в `[archive/mifa-vpn-2-legacy](https://github.com/kolpakovden/mifa-vpn-legacy)`.
+- **Platform (current)** — modular architecture with monitoring stack and Telegram control layer.
+- **Basic v1.0.0** — lightweight monolithic setup without monitoring and modular components.  
+  → https://github.com/kolpakovden/mifa-vpn-basic-v1.0.0
 
+## Which edition should I choose?
+
+- Choose **Basic** if you need a fast, minimal, single-server VPN setup.
+- Choose **Platform** if you need monitoring, automation, and production-grade control.
+
+> Historical experimental version available at  
+> https://github.com/kolpakovden/mifa-vpn-legacy
 ---
 
 ## Features
 
 - Xray Core (VLESS + Reality)
 - Multi-port configuration (443, 8443, 2053, 2083, 50273)
-- Telegram bot for user management
+- Telegram bot for user lifecycle management
+- Centralized state handling
 - Monitoring stack (Grafana + Prometheus + Loki + Promtail)
-- Centralized state management
-- Fully containerized monitoring via Docker Compose
+- Structured access logging
 - Idempotent installer (safe re-run)
+- Fully containerized observability layer
   
 ---
 
-## Architecture
-Core Components
-1. Xray (Traffic Engine)
-  Xray-core powers the VPN layer using:
-  VLESS protocol
-  Reality TLS obfuscation
-  Multi-port inbounds
-  Structured access logging
-  Reality provides TLS camouflage without requiring certificates.
+## Architecture Overview (v1.0.2)
 
-2. Telegram Bot (Control Layer)
-  Built using:
-  python-telegram-bot
-Capabilities:
+MIFA Platform is a layered VPN infrastructure consisting of:
+- **Traffic Layer** — Xray (VLESS + Reality)
+- **Control Layer** — Telegram Bot
+- **Observability Layer** — Prometheus + Grafana + Loki
+  
+---
+
+## Architecture Diagram
+
+                ┌────────────────────┐
+                │      Telegram      │
+                │        Admin       │
+                └─────────┬──────────┘
+                          │
+                          ▼
+                ┌────────────────────┐
+                │   Telegram Bot     │
+                │ (Control Layer)    │
+                └─────────┬──────────┘
+                          │
+                modifies  │ config
+                          ▼
+                ┌────────────────────┐
+                │       Xray         │
+                │ (Traffic Engine)   │
+                └─────────┬──────────┘
+                          │
+                          ▼
+                   Internet Traffic
+
+Logs → Promtail → Loki → Grafana  
+Metrics → Node Exporter → Prometheus → Grafana
+
+---
+
+## Components
+
+### Xray (Traffic Engine)
+- VLESS protocol
+- Reality TLS obfuscation
+- Multi-port inbounds
+- Structured logging
+- Config: /usr/local/etc/xray/config.json
+- Logs: /var/log/xray/access.log
+
+### Telegram Bot (Control Layer)
+
+- Built with python-telegram-bot.
+Commands:
 ```
 /add <user>
 /del <user>
@@ -40,18 +86,18 @@ Capabilities:
 /key <user>
 /restart
 ```
-Bot communicates directly with Xray config and reloads service safely.
-Runs as:
-```
-systemd service: mifa-xray-bot
-```
-3. Observability Stack (Monitoring)
-Fully containerized:
-  Grafana
-  Prometheus
-  Loki
-  Promtail
-All deployed via Docker Compose.
+- Service: mifa-xray-bot (systemd)
+- Credentials: /etc/mifa/bot.env
+- State file: /etc/mifa/state.env
+
+### Observability Stack (Monitoring)
+
+Containerized via Docker Compose:
+- Prometheus - metrics collection
+- Grafana - visualization
+- Loki - log storage
+- Promtail - log shipping
+- Node Exporter - system metrics
 
 ---
 
@@ -92,7 +138,7 @@ Install everything:
 ```
 sudo ./cmd/install.sh --all
 ```
-Or modular:
+Modular installation:
 ```
 sudo ./cmd/install.sh --core
 sudo ./cmd/install.sh --monitoring
@@ -112,77 +158,88 @@ sudo ./cmd/install.sh --bot
 ```
 
 ---
-## Monitoring (Grafana + Prometheus + Loki + Promtail)
-
-Платформа включает мониторинг метрик и логов:
-
-- **Prometheus** собирает метрики (включая node-exporter).
-- **Grafana** — UI для метрик и логов.
-- **Loki** — хранилище логов.
-- **Promtail** — агент, который читает логи и отправляет их в Loki.
+## Monitoring
 
 ### Endpoints
-- Grafana: `http://<server-ip>:3000`
-- Prometheus: `http://<server-ip>:9090`
-- Loki: `http://<server-ip>:3100`
-- Node Exporter: `http://<server-ip>:9100`
-
-> Рекомендуется ограничить доступ к Prometheus/Loki/Node Exporter на firewall уровне и оставить внешним только Grafana (или закрыть Grafana по IP).
-
-### Loki storage
-Loki настроен для single-node режима. Все данные (chunks/index/WAL/compactor) хранятся в `/var/lib/loki` (docker volume), чтобы избежать проблем с правами и рестартами.
-
-### Version pinning
-Monitoring-образы закреплены (pin) для воспроизводимых деплоев и чтобы избежать несовместимости конфигов при обновлениях.
----
-
-## Access
 ```
-| Service    | URL                     |
-| ---------- | ----------------------- |
-| Grafana    | `http://SERVER_IP:3000` |
-| Prometheus | `http://SERVER_IP:9090` |
-| Loki       | `http://SERVER_IP:3100` |
+Service	URL
+Grafana	http://SERVER_IP:3000
+Prometheus	http://SERVER_IP:9090
+Loki	http://SERVER_IP:3100
+Node Exporter	http://SERVER_IP:9100
 ```
-Default Grafana: 
+Default Grafana credentials:
 ```
 admin / admin
 ```
+### Loki Storage
+
+Single-node mode.
+All data stored in Docker volume:
+```
+/var/lib/loki
+```
+Ensures durability and safe restarts.
+
+### Version Pinning
+Monitoring images are pinned for reproducible deployments and config compatibility.
+
 ---
 
 ## Security Model
-- Reality-based TLS obfuscation
-- No exposed management panel
-- Telegram bot restricted by CHAT_ID
-- Sensitive data stored outside repository
-- Logs centralized but not publicly exposed
+- Reality-based TLS camouflage
+- No exposed web management panel
+- Telegram bot restricted via CHAT_ID
+- Secrets stored outside repository
+- Monitoring endpoints recommended behind firewall
+- No direct public configuration surface
 
 ---
 
 ## Versioning
-```
-| Version | Description                      |
-| ------- | -------------------------------- |
-| v1.0.0  | First stable platform release    |
-| legacy  | Pre-platform experimental builds |
-```
 Semantic Versioning:
-        MAJOR.MINOR.PATCH
+```
+MAJOR.MINOR.PATCH
+```
+```
+Version	Description
+v1.0.0	Initial stable platform
+v1.0.2	Monitoring stabilization
+legacy	Pre-platform experimental builds
+```
 
 ---
 
 ## Roadmap (Planned)
-- Multi-server cluster support
+Planned:
+- Bot-first control plane
 - REST API layer
-- Web management panel
+- Multi-server cluster support
 - Role-based access control
-- Auto-backup of users
+- Web management panel
+- Automated backups
 - Usage-based billing hooks
 - Dockerized core mode
+
+---
+
+## Edition Comparison
+
+| Feature | Platform (v1.0.2) | Basic (v1.0.0) |
+|----------|------------------|----------------|
+| Architecture | Modular | Monolithic |
+| Xray (VLESS + Reality) | ✅ | ✅ |
+| Multi-port support | ✅ | ✅ |
+| Telegram Bot | ✅ | ❌ |
+| Monitoring (Grafana + Prometheus + Loki) | ✅ | ❌ |
+| Structured Logging | ✅ | Minimal |
+| Dockerized Observability | ✅ | ❌ |
+| Idempotent Installer | ✅ | ✅ |
+| Target Use Case | Production Infrastructure | Simple Personal Setup |
+| Complexity | Medium | Low |
 
 ---
 
 ## ⚠️ Disclaimer
 For educational and private infrastructure use only.
 Ensure compliance with local laws.
-        
