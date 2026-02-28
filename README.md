@@ -225,7 +225,7 @@ Planned:
 
 ## Edition Comparison
 
-| Feature | Platform (v1.0.2) | Basic (v1.0.0) |
+| Feature | Platform (v1.0.2) | Basic (v1.0.1) |
 |----------|------------------|----------------|
 | Architecture | Modular | Monolithic |
 | Xray (VLESS + Reality) | ✅ | ✅ |
