@@ -28,3 +28,7 @@ bot/venv/
 # secrets
 monitoring/alert-router/alert-router.env
 *.env
+
+# secrets
+monitoring/alert-router/alert-router.env
+*.env
