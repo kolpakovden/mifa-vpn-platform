@@ -21,3 +21,6 @@ __pycache__/
 
 
 !monitoring/loki/loki-config.yaml
+
+# python venv
+bot/venv/
