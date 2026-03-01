@@ -72,7 +72,7 @@ PUBLIC_KEY=${PUBLIC_KEY}
 SHORT_ID=${SHORT_ID}
 # Used by bot if not overridden
 DEFAULT_SNI=www.github.com
-PORTS=443,8443,2053,2083,50273
+PORTS=8443,50273
 EOF
 
   chmod 600 /etc/mifa/state.env
@@ -93,7 +93,7 @@ SERVER_IP=127.0.0.1
 PUBLIC_KEY=
 SHORT_ID=${SHORT}
 DEFAULT_SNI=www.github.com
-PORTS=443,8443,2053,2083,50273
+PORTS=8443,50273
 EOF
   chmod 600 /etc/mifa/state.env
 }
