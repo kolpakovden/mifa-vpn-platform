@@ -238,6 +238,7 @@ Planned:
 | Idempotent Installer | ✅ | ✅ |
 | Target Use Case | Production Infrastructure | Simple Personal Setup |
 | Complexity | Medium | Low |
+| Key Distribution (links/QR) | ✅ | ❌ |
 
 ---
 
