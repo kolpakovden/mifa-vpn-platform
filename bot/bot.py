@@ -1,37 +1,35 @@
 #!/usr/bin/env python3
-"""MIFA Xray Telegram Admin Bot
+"""MIFA Xray Telegram Admin Bot (MIFA platform)
 
-Designed for the MIFA platform layout.
+Env (systemd EnvironmentFile):
+  - /etc/mifa/state.env: XRAY_CONFIG/SERVER_HOST/PUBLIC_KEY/SHORT_ID/DEFAULT_SNI/PORTS
+  - /etc/mifa/bot.env:   BOT_TOKEN + ADMIN_IDS (+ optional ALLOWED_CHAT_ID)
 
-Env sources (systemd EnvironmentFile):
-  - /etc/mifa/state.env: CONFIG_PATH/SERVER_IP/PUBLIC_KEY/SHORT_ID/DEFAULT_SNI/PORTS
-  - /etc/mifa/bot.env:   BOT_TOKEN (+ access control)
+Access control:
+  - ADMIN_IDS: comma-separated Telegram user IDs
+  - ALLOWED_CHAT_ID (optional): restrict to a chat/group id
 
-Access control (recommended):
-  - ADMIN_IDS: comma-separated Telegram *user* IDs
-Optional:
-  - ALLOWED_CHAT_ID: allow commands only from this chat/group id
-
-Notes:
-  - Applies config changes safely: backup -> write -> xray -test -> restart -> rollback on failure.
-  - Adds/removes clients across ALL protocol=vless inbounds (fits multi-port template).
+Safety:
+  - drop_pending_updates=True (no backlog execution after restart)
+  - safe apply: backup -> write -> xray -test -> restart -> rollback on failure
+  - any exception -> ❌ error message in Telegram + traceback in journalctl
 """
-
-from __future__ import annotations
 
 import json
 import os
 import re
 import subprocess
 import tempfile
+import traceback
 import uuid
+from io import BytesIO
+import qrcode
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 try:
     from dotenv import load_dotenv
-
-    load_dotenv()  # optional local .env for dev
+    load_dotenv()
 except Exception:
     pass
 
@@ -39,11 +37,30 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 
-# ---- env ----
+# ---------- safe wrappers ----------
+
+async def safe_reply(update: Update, text: str, **kwargs):
+    try:
+        if update and update.message:
+            await update.message.reply_text(text, **kwargs)
+    except Exception:
+        pass
+
+
+async def run_safe(update: Update, func):
+    try:
+        return await func()
+    except Exception as e:
+        traceback.print_exc()
+        await safe_reply(update, f"❌ Ошибка: {e}")
+
+
+# ---------- env ----------
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-ALLOWED_CHAT_ID = int(os.getenv("ALLOWED_CHAT_ID", "0"))
+ALLOWED_CHAT_ID = int((os.getenv("ALLOWED_CHAT_ID") or "0").strip() or "0")
+
 _admins_raw = (os.getenv("ADMIN_IDS") or "").strip()
 ADMIN_IDS: Set[int] = set()
 if _admins_raw:
@@ -59,7 +76,6 @@ SERVER_HOST = os.getenv("SERVER_HOST") or os.getenv("SERVER_IP") or "127.0.0.1"
 PUBLIC_KEY = os.getenv("PUBLIC_KEY", "")
 SHORT_ID = os.getenv("SHORT_ID", "")
 DEFAULT_SNI = os.getenv("DEFAULT_SNI", "www.github.com")
-EMAIL_DOMAIN = os.getenv("EMAIL_DOMAIN", "myserver.com")
 
 
 def _parse_ports(s: str) -> List[int]:
@@ -78,7 +94,7 @@ def _parse_ports(s: str) -> List[int]:
 DEFAULT_PORTS = _parse_ports(os.getenv("PORTS", "443,8443,2053,2083,50273"))
 
 
-# ---- helpers ----
+# ---------- helpers ----------
 
 def run(cmd: List[str]) -> Tuple[int, str]:
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -119,15 +135,10 @@ def get_status_xray() -> str:
 
 
 def find_vless_inbounds(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
-    res: List[Dict[str, Any]] = []
-    for ib in cfg.get("inbounds", []) or []:
-        if ib.get("protocol") == "vless":
-            res.append(ib)
-    return res
+    return [ib for ib in (cfg.get("inbounds", []) or []) if ib.get("protocol") == "vless"]
 
 
 def extract_reality_from_any_inbound(cfg: Dict[str, Any]) -> Dict[str, str]:
-    """Fallback to pull SHORT_ID / SNI / public key from config.json if env is missing."""
     for ib in cfg.get("inbounds", []) or []:
         ss = ib.get("streamSettings", {}) or {}
         if ss.get("security") != "reality":
@@ -152,40 +163,28 @@ def extract_reality_from_any_inbound(cfg: Dict[str, Any]) -> Dict[str, str]:
                 m = re.search(r"Public\s*key:\s*([A-Za-z0-9+/=_-]+)", out)
                 if m:
                     pub = m.group(1)
-                else:
-                    m2 = re.search(r"PublicKey:\s*([A-Za-z0-9+/=_-]+)", out)
-                    if m2:
-                        pub = m2.group(1)
 
         return {"short_id": short_id, "sni": sni, "public_key": pub}
 
     return {"short_id": "", "sni": "", "public_key": ""}
 
 
-def normalize_name(s: str) -> str:
+def normalize_alias(s: str) -> str:
     s = s.strip()
     s = re.sub(r"\s+", "_", s)
     s = re.sub(r"[^a-zA-Z0-9_\-.@]", "", s)
-    return s[:64]
+    return s[:64].lower()
 
 
-def make_email_from_name(name_or_email: str) -> str:
-    n = normalize_name(name_or_email).lower()
-    if "@" in n:
-        return n
-    return f"{n}@{EMAIL_DOMAIN}"
-
-
-def find_client(clients: List[Dict[str, Any]], email: str) -> Optional[Dict[str, Any]]:
-    email_l = email.lower()
+def find_client(clients: List[Dict[str, Any]], label: str) -> Optional[Dict[str, Any]]:
+    label_l = label.lower()
     for c in clients:
-        if (c.get("email") or "").lower() == email_l:
+        if (c.get("email") or "").lower() == label_l:
             return c
     return None
 
 
 def apply_config_safely(new_cfg: Dict[str, Any]) -> Tuple[bool, str]:
-    """Write config.json, test it, restart xray; rollback on failure."""
     cfg_path = Path(CONFIG_PATH)
     backup_path = cfg_path.with_suffix(cfg_path.suffix + ".bak")
 
@@ -219,7 +218,7 @@ def apply_config_safely(new_cfg: Dict[str, Any]) -> Tuple[bool, str]:
         try:
             if backup_path.exists():
                 cfg_path.write_bytes(backup_path.read_bytes())
-                restart_xray()  # best-effort restore
+                restart_xray()
         except Exception:
             pass
         return False, f"Xray restart failed, rolled back. Output:\n{restart_out}"
@@ -227,8 +226,8 @@ def apply_config_safely(new_cfg: Dict[str, Any]) -> Tuple[bool, str]:
     return True, (test_out or "OK")
 
 
-def generate_vless_link(uid: str, email: str, port: int, sni: str, pbk: str, sid: str) -> str:
-    name = (email.split("@")[0] if email else "user")
+def generate_vless_link(uid: str, alias: str, port: int, sni: str, pbk: str, sid: str) -> str:
+    name = alias or "user"
     return (
         f"vless://{uid}@{SERVER_HOST}:{port}"
         f"?security=reality&sni={sni}&fp=chrome&pbk={pbk}&sid={sid}"
@@ -241,237 +240,310 @@ async def is_allowed(update: Update) -> bool:
     chat_id = update.effective_chat.id if update.effective_chat else 0
 
     if ADMIN_IDS and user_id not in ADMIN_IDS:
-        await update.message.reply_text("⛔️ Нет доступа")
+        await safe_reply(update, "⛔️ Нет доступа")
         return False
 
     if ALLOWED_CHAT_ID and chat_id != ALLOWED_CHAT_ID:
-        await update.message.reply_text("⛔️ Нет доступа")
+        await safe_reply(update, "⛔️ Нет доступа")
         return False
 
     return True
 
 
-# ---- commands ----
+# ---------- commands ----------
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_allowed(update):
         return
-    await update.message.reply_text(
+    await safe_reply(
+        update,
         "MIFA Xray Bot ✅\n\n"
         "Команды:\n"
-        "/add <name|email> — добавить пользователя\n"
+        "/add <alias> — добавить пользователя\n"
         "/list — список пользователей\n"
-        "/del <email> — удалить пользователя\n"
-        "/key <email> [port] — ключ (без port: для всех портов)\n"
+        "/del <alias> — удалить пользователя\n"
+        "/key <alias> [port] — ключ (без port: для всех портов)\n"
         "/info — параметры Reality (без секретов)\n"
         "/restart — перезапустить Xray\n"
         "/status — статус Xray\n"
-        "/help — это сообщение"
+        "/help — это сообщение",
     )
 
 
 async def add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await is_allowed(update):
-        return
-    if not context.args:
-        await update.message.reply_text("Использование: /add <name|email>")
-        return
+    async def inner():
+        if not await is_allowed(update):
+            return
+        if not context.args:
+            await safe_reply(update, "Использование: /add <alias>")
+            return
 
-    raw = " ".join(context.args)
-    email = make_email_from_name(raw)
+        alias = normalize_alias(" ".join(context.args))
 
-    # UUID generation
-    new_uuid = str(uuid.uuid4())
-    rc, out = run(["xray", "uuid"])
-    if rc == 0 and out:
-        new_uuid = out.splitlines()[0].strip()
+        # uuid
+        new_uuid = str(uuid.uuid4())
+        rc, out = run(["xray", "uuid"])
+        if rc == 0 and out:
+            new_uuid = out.splitlines()[0].strip()
 
-    cfg = load_config()
-    vless_inbounds = find_vless_inbounds(cfg)
-    if not vless_inbounds:
-        await update.message.reply_text("В config.json не найден inbound protocol=vless")
-        return
+        # load config (handle broken json)
+        try:
+            cfg = load_config()
+        except Exception as e:
+            raise RuntimeError(f"config.json невалиден/не читается: {e}")
 
-    first_clients = vless_inbounds[0].setdefault("settings", {}).setdefault("clients", [])
-    if find_client(first_clients, email):
-        await update.message.reply_text(f"Уже есть: {email}")
-        return
+        vless_inbounds = find_vless_inbounds(cfg)
+        if not vless_inbounds:
+            await safe_reply(update, "В config.json не найден inbound protocol=vless")
+            return
 
-    new_client = {"flow": "xtls-rprx-vision", "id": new_uuid, "email": email}
-    for ib in vless_inbounds:
-        ib.setdefault("settings", {}).setdefault("clients", []).append(dict(new_client))
+        first_clients = vless_inbounds[0].setdefault("settings", {}).setdefault("clients", [])
+        if find_client(first_clients, alias):
+            await safe_reply(update, f"Уже есть: {alias}")
+            return
 
-    ok, apply_out = apply_config_safely(cfg)
-    if not ok:
-        await update.message.reply_text(f"❌ Не применилось:\n{apply_out}")
-        return
+        new_client = {"flow": "xtls-rprx-vision", "id": new_uuid, "email": alias}
+        for ib in vless_inbounds:
+            ib.setdefault("settings", {}).setdefault("clients", []).append(dict(new_client))
 
-    # fill missing link params from config.json if env is missing
-    global PUBLIC_KEY, SHORT_ID, DEFAULT_SNI
-    if not (PUBLIC_KEY and SHORT_ID):
-        fb = extract_reality_from_any_inbound(cfg)
-        PUBLIC_KEY = PUBLIC_KEY or fb.get("public_key", "")
-        SHORT_ID = SHORT_ID or fb.get("short_id", "")
-        DEFAULT_SNI = DEFAULT_SNI or fb.get("sni", "")
+        ok, apply_out = apply_config_safely(cfg)
+        if not ok:
+            await safe_reply(update, f"❌ Не применилось:\n{apply_out}")
+            return
 
-    if not (PUBLIC_KEY and SHORT_ID):
-        await update.message.reply_text(
-            f"✅ Добавлен: {email}\nUUID: {new_uuid}\n"
-            "Но PUBLIC_KEY/SHORT_ID не заданы (проверь /etc/mifa/state.env)."
+        # fill missing link params from config if env missing
+        global PUBLIC_KEY, SHORT_ID, DEFAULT_SNI
+        if not (PUBLIC_KEY and SHORT_ID):
+            fb = extract_reality_from_any_inbound(cfg)
+            PUBLIC_KEY = PUBLIC_KEY or fb.get("public_key", "")
+            SHORT_ID = SHORT_ID or fb.get("short_id", "")
+            DEFAULT_SNI = DEFAULT_SNI or fb.get("sni", "")
+
+        keys = ""
+        if PUBLIC_KEY and SHORT_ID:
+            keys = "\n".join(
+                [generate_vless_link(new_uuid, alias, p, DEFAULT_SNI, PUBLIC_KEY, SHORT_ID) for p in DEFAULT_PORTS]
+            )
+
+        msg = (
+            f"*Пользователь добавлен!*\n\n"
+            f"*Alias:* `{alias}`\n"
+            f"*UUID:* `{new_uuid}`\n"
+            f"*Xray:* `{get_status_xray()}`\n\n"
         )
-        return
+        if keys:
+            msg += f"*Ключи:*\n{keys}"
+        else:
+            msg += "⚠️ PUBLIC_KEY/SHORT_ID не заданы (проверь /etc/mifa/state.env или realitySettings)."
 
-    keys = "\n".join(
-        [generate_vless_link(new_uuid, email, p, DEFAULT_SNI, PUBLIC_KEY, SHORT_ID) for p in DEFAULT_PORTS]
-    )
+        await safe_reply(update, msg, parse_mode="Markdown")
 
-    msg = (
-        f"*Пользователь добавлен!*\n\n"
-        f"*Email:* `{email}`\n"
-        f"*UUID:* `{new_uuid}`\n"
-        f"*Xray:* `{get_status_xray()}`\n\n"
-        f"*Ключи:*\n{keys}"
-    )
-    await update.message.reply_text(msg, parse_mode="Markdown")
+    await run_safe(update, inner)
 
 
 async def list_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await is_allowed(update):
-        return
-    cfg = load_config()
-    vless_inbounds = find_vless_inbounds(cfg)
-    if not vless_inbounds:
-        await update.message.reply_text("Нет inbound vless")
-        return
+    async def inner():
+        if not await is_allowed(update):
+            return
+        cfg = load_config()
+        vless_inbounds = find_vless_inbounds(cfg)
+        if not vless_inbounds:
+            await safe_reply(update, "Нет inbound vless")
+            return
 
-    clients = (vless_inbounds[0].get("settings", {}) or {}).get("clients", []) or []
-    if not clients:
-        await update.message.reply_text("Нет пользователей")
-        return
+        clients = (vless_inbounds[0].get("settings", {}) or {}).get("clients", []) or []
+        if not clients:
+            await safe_reply(update, "Нет пользователей")
+            return
 
-    msg = "*Список пользователей:*\n\n"
-    for i, c in enumerate(clients, 1):
-        msg += f"{i}. *{c.get('email','')}*\n   `{c.get('id','')}`\n"
-    await update.message.reply_text(msg, parse_mode="Markdown")
+        msg = "*Список пользователей:*\n\n"
+        for i, c in enumerate(clients, 1):
+            msg += f"{i}. *{c.get('email','')}*\n   `{c.get('id','')}`\n"
+        await safe_reply(update, msg, parse_mode="Markdown")
+
+    await run_safe(update, inner)
 
 
 async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await is_allowed(update):
-        return
-    if not context.args:
-        await update.message.reply_text("Использование: /del <email>")
-        return
+    async def inner():
+        if not await is_allowed(update):
+            return
+        if not context.args:
+            await safe_reply(update, "Использование: /del <alias>")
+            return
 
-    email = normalize_name(context.args[0]).lower()
-    cfg = load_config()
-    vless_inbounds = find_vless_inbounds(cfg)
-    if not vless_inbounds:
-        await update.message.reply_text("Нет inbound vless")
-        return
+        alias = normalize_alias(context.args[0])
 
-    deleted = False
-    for ib in vless_inbounds:
-        settings = ib.setdefault("settings", {})
-        clients = settings.get("clients", []) or []
-        before = len(clients)
-        settings["clients"] = [c for c in clients if (c.get("email") or "").lower() != email]
-        if len(settings["clients"]) < before:
-            deleted = True
+        cfg = load_config()
+        vless_inbounds = find_vless_inbounds(cfg)
+        if not vless_inbounds:
+            await safe_reply(update, "Нет inbound vless")
+            return
 
-    if not deleted:
-        await update.message.reply_text(f"Пользователь {email} не найден")
-        return
+        deleted = False
+        for ib in vless_inbounds:
+            settings = ib.setdefault("settings", {})
+            clients = settings.get("clients", []) or []
+            before = len(clients)
+            settings["clients"] = [c for c in clients if (c.get("email") or "").lower() != alias]
+            if len(settings["clients"]) < before:
+                deleted = True
 
-    ok, apply_out = apply_config_safely(cfg)
-    if not ok:
-        await update.message.reply_text(f"❌ Не применилось:\n{apply_out}")
-        return
+        if not deleted:
+            await safe_reply(update, f"Пользователь {alias} не найден")
+            return
 
-    await update.message.reply_text(f"✅ Пользователь {email} удалён. Xray: {get_status_xray()}")
+        ok, apply_out = apply_config_safely(cfg)
+        if not ok:
+            await safe_reply(update, f"❌ Не применилось:\n{apply_out}")
+            return
+
+        await safe_reply(update, f"✅ Пользователь {alias} удалён. Xray: {get_status_xray()}")
+
+    await run_safe(update, inner)
 
 
 async def get_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await is_allowed(update):
-        return
-    if not context.args:
-        await update.message.reply_text("Использование: /key <email> [port]")
-        return
+    async def inner():
+        if not await is_allowed(update):
+            return
 
-    email = normalize_name(context.args[0]).lower()
-    port: Optional[int] = None
-    if len(context.args) > 1:
-        try:
-            port = int(context.args[1])
-        except Exception:
-            port = None
+        if not context.args:
+            await safe_reply(update, "Использование: /key <alias> [port]")
+            return
 
-    cfg = load_config()
-    vless_inbounds = find_vless_inbounds(cfg)
-    if not vless_inbounds:
-        await update.message.reply_text("Нет inbound vless")
-        return
+        alias = normalize_alias(context.args[0])
 
-    user = None
-    for c in (vless_inbounds[0].get("settings", {}) or {}).get("clients", []) or []:
-        if (c.get("email") or "").lower() == email:
-            user = c
-            break
-    if not user:
-        await update.message.reply_text(f"Пользователь {email} не найден")
-        return
+        port: Optional[int] = None
+        if len(context.args) > 1:
+            try:
+                port = int(context.args[1])
+            except Exception:
+                port = None
 
-    global PUBLIC_KEY, SHORT_ID, DEFAULT_SNI
-    if not (PUBLIC_KEY and SHORT_ID):
-        fb = extract_reality_from_any_inbound(cfg)
-        PUBLIC_KEY = PUBLIC_KEY or fb.get("public_key", "")
-        SHORT_ID = SHORT_ID or fb.get("short_id", "")
-        DEFAULT_SNI = DEFAULT_SNI or fb.get("sni", "")
+        cfg = load_config()
+        vless_inbounds = find_vless_inbounds(cfg)
+        if not vless_inbounds:
+            await safe_reply(update, "Нет inbound vless")
+            return
 
-    if not (PUBLIC_KEY and SHORT_ID):
-        await update.message.reply_text("PUBLIC_KEY/SHORT_ID не заданы (проверь /etc/mifa/state.env)")
-        return
+        user = None
+        for c in (vless_inbounds[0].get("settings", {}) or {}).get("clients", []) or []:
+            if (c.get("email") or "").lower() == alias:
+                user = c
+                break
 
-    ports = [port] if port else DEFAULT_PORTS
-    keys = "\n".join(
-        [generate_vless_link(user["id"], user["email"], p, DEFAULT_SNI, PUBLIC_KEY, SHORT_ID) for p in ports]
-    )
-    title = f"*Ключи для {email}:*" if not port else f"*Ключ для {email} на порт {port}:*"
-    await update.message.reply_text(f"{title}\n\n{keys}", parse_mode="Markdown")
+        if not user:
+            await safe_reply(update, f"Пользователь {alias} не найден")
+            return
 
+        global PUBLIC_KEY, SHORT_ID, DEFAULT_SNI
+        if not (PUBLIC_KEY and SHORT_ID):
+            fb = extract_reality_from_any_inbound(cfg)
+            PUBLIC_KEY = PUBLIC_KEY or fb.get("public_key", "")
+            SHORT_ID = SHORT_ID or fb.get("short_id", "")
+            DEFAULT_SNI = DEFAULT_SNI or fb.get("sni", "")
+
+        if not (PUBLIC_KEY and SHORT_ID):
+            await safe_reply(
+                update,
+                "PUBLIC_KEY/SHORT_ID не заданы (проверь /etc/mifa/state.env или realitySettings)"
+            )
+            return
+
+        port_arg = context.args[1].strip().lower() if len(context.args) > 1 else ""
+        if port_arg == "all":
+            ports = DEFAULT_PORTS
+        elif port_arg:
+            try:
+                ports = [int(port_arg)]
+            except Exception:
+                await safe_reply(update, "Порт должен быть числом, например: /key test10 8443 (или /key test10 all)")
+                return
+        else:
+            ports = [443] if 443 in DEFAULT_PORTS else [DEFAULT_PORTS[0]]
+
+        keys = "\n".join(
+            [
+                generate_vless_link(
+                    user["id"],
+                    user["email"],
+                    p,
+                    DEFAULT_SNI,
+                    PUBLIC_KEY,
+                    SHORT_ID
+                )
+                for p in ports
+            ]
+        )
+
+        # ---- QR отправка ----
+        for p in ports:
+            link = generate_vless_link(
+                user["id"],
+                user["email"],
+                p,
+                DEFAULT_SNI,
+                PUBLIC_KEY,
+                SHORT_ID
+            )
+
+            img = qrcode.make(link)
+            bio = BytesIO()
+            img.save(bio, format="PNG")
+            bio.seek(0)
+
+            try:
+                await update.message.reply_photo(photo=bio, caption=f"{alias}-{p}")
+            except Exception:
+                pass
+
+        # ---- Текстовый вывод ----
+        title = f"Ключи для {alias}:"
+        await safe_reply(update, f"{title}\n\n```\n{keys}\n```")
+
+    await run_safe(update, inner)
 
 async def restart_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await is_allowed(update):
-        return
-    await update.message.reply_text("Перезапускаю Xray...")
-    ok, out = restart_xray()
-    if ok:
-        await update.message.reply_text(f"Xray: {get_status_xray()}")
-    else:
-        await update.message.reply_text(f"Ошибка рестарта:\n{out}")
+    async def inner():
+        if not await is_allowed(update):
+            return
+        await safe_reply(update, "Перезапускаю Xray...")
+        ok, out = restart_xray()
+        if ok:
+            await safe_reply(update, f"Xray: {get_status_xray()}")
+        else:
+            await safe_reply(update, f"Ошибка рестарта:\n{out}")
+
+    await run_safe(update, inner)
 
 
 async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_allowed(update):
         return
-    await update.message.reply_text(f"Xray: {get_status_xray()}")
+    await safe_reply(update, f"Xray: {get_status_xray()}")
 
 
 async def info_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await is_allowed(update):
-        return
-    cfg = load_config()
-    fb = extract_reality_from_any_inbound(cfg)
-    sni = DEFAULT_SNI or fb.get("sni", "")
-    sid = SHORT_ID or fb.get("short_id", "")
-    pbk = PUBLIC_KEY or fb.get("public_key", "")
-    await update.message.reply_text(
-        "Reality params:\n"
-        f"host: {SERVER_HOST}\n"
-        f"sni: {sni}\n"
-        f"shortId: {sid}\n"
-        f"publicKey: {pbk}\n"
-        f"ports: {','.join(str(p) for p in DEFAULT_PORTS)}"
-    )
+    async def inner():
+        if not await is_allowed(update):
+            return
+        cfg = load_config()
+        fb = extract_reality_from_any_inbound(cfg)
+        sni = DEFAULT_SNI or fb.get("sni", "")
+        sid = SHORT_ID or fb.get("short_id", "")
+        pbk = PUBLIC_KEY or fb.get("public_key", "")
+        await safe_reply(
+            update,
+            "Reality params:\n"
+            f"host: {SERVER_HOST}\n"
+            f"sni: {sni}\n"
+            f"shortId: {sid}\n"
+            f"publicKey: {pbk}\n"
+            f"ports: {','.join(str(p) for p in DEFAULT_PORTS)}",
+        )
+
+    await run_safe(update, inner)
 
 
 def main() -> None:
@@ -492,7 +564,7 @@ def main() -> None:
     app.add_handler(CommandHandler("status", status_cmd))
 
     print("Бот запущен...")
-    app.run_polling()
+    app.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
