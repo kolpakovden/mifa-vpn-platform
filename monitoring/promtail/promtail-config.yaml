@@ -22,3 +22,25 @@ scrape_configs:
           email:
           domain:
           ip:
+  - job_name: mifa-traffic
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: mifa-traffic
+          __path__: /var/log/mifa/traffic.jsonl
+    pipeline_stages:
+      - json:
+          expressions:
+            user: user
+            domain: domain
+            brand: brand
+            watch_hit: watch_hit
+            severity: severity
+            rule: rule
+            city: geo.city
+            isp: geo.isp
+            asn: geo.asn
+      - labels:
+          user:
+          brand:
+          severity:

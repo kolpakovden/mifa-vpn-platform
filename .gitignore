@@ -24,3 +24,7 @@ __pycache__/
 
 # python venv
 bot/venv/
+
+# secrets
+monitoring/alert-router/alert-router.env
+*.env

@@ -6,6 +6,7 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
+      - ./prometheus/alerts-mifa.yml:/etc/prometheus/alerts-mifa.yml:ro
     ports:
       - "9090:9090"
 
@@ -44,6 +45,28 @@ services:
       - ./promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
       - /var/log:/var/log:ro
       - promtail_positions:/var/lib/loki
+      - /var/log/mifa:/var/log/mifa:ro
+
+  mifa-alert-router:
+    build: ./alert-router
+    container_name: mifa-alert-router
+    restart: unless-stopped
+    env_file:
+      - ./alert-router/alert-router.env
+    command: ["gunicorn","-b","0.0.0.0:8080","app:app","--workers","1","--threads","4","--timeout","30","--access-logfile","-","--error-logfile","-"]
+    ports:
+      - "8080:8080"
+ 
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: mifa-alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+    ports:
+      - "9093:9093"
 
   grafana:
     image: grafana/grafana:10.4.8
