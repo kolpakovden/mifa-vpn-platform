@@ -91,7 +91,7 @@ def _parse_ports(s: str) -> List[int]:
     return out or [443]
 
 
-DEFAULT_PORTS = _parse_ports(os.getenv("PORTS", "443,8443,2053,2083,50273"))
+DEFAULT_PORTS = _parse_ports(os.getenv("PORTS", "8443,50273"))
 
 
 # ---------- helpers ----------
@@ -262,7 +262,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/add <alias> — добавить пользователя\n"
         "/list — список пользователей\n"
         "/del <alias> — удалить пользователя\n"
-        "/key <alias> [port] — ключ (без port: для всех портов)\n"
+        "/key <alias> [port|all] — ключ (без port: для всех портов)\n"
         "/info — параметры Reality (без секретов)\n"
         "/restart — перезапустить Xray\n"
         "/status — статус Xray\n"
@@ -461,7 +461,8 @@ async def get_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await safe_reply(update, "Порт должен быть числом, например: /key test10 8443 (или /key test10 all)")
                 return
         else:
-            ports = [443] if 443 in DEFAULT_PORTS else [DEFAULT_PORTS[0]]
+            # без указания порта — выдаём все доступные порты (обычно 8443 и 50273)
+            ports = DEFAULT_PORTS
 
         keys = "\n".join(
             [
