@@ -7,10 +7,17 @@
 /var/log/
 /data/
 
-# grafana volumes
+# docker volumes (root-level only)
 grafana/
-/loki/
+loki/
 prometheus/
+
+# keep monitoring dashboards in git
+!monitoring/grafana/
+!monitoring/grafana/**
+monitoring/grafana/data/
+monitoring/grafana/plugins/
+monitoring/grafana/logs/
 
 # python
 __pycache__/
@@ -19,12 +26,8 @@ __pycache__/
 # system files
 .DS_Store
 
-
-!monitoring/loki/loki-config.yaml
-
 # python venv
 bot/venv/
 
 # secrets
 monitoring/alert-router/alert-router.env
-*.env
