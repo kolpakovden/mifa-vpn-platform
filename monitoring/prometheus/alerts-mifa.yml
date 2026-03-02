@@ -1,0 +1,37 @@
+groups:
+- name: mifa-system
+  rules:
+  - alert: HighMemoryUsage
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+    for: 5m
+    labels: {severity: warn}
+    annotations:
+      summary: "RAM usage > 90%"
+      description: "RAM > 90% for 5m on {{ $labels.instance }}"
+
+  - alert: LowDiskSpace
+    expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) * 100 < 10
+    for: 10m
+    labels: {severity: critical}
+    annotations:
+      summary: "Disk space < 10%"
+      description: "Disk free < 10% on {{ $labels.instance }} (mount={{ $labels.mountpoint }})"
+
+  - alert: HighCPUUsage
+    expr: (1 - avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[2m]))) * 100 > 90
+    for: 10m
+    labels: {severity: warn}
+    annotations:
+      summary: "CPU usage > 90%"
+      description: "CPU > 90% for 10m on {{ $labels.instance }}"
+
+- name: mifa-watchlist
+  interval: 15s
+  rules:
+  - alert: WatchlistHitCritical
+    expr: increase(mifa_watchlist_hits_total{severity="critical"}[10m]) > 0
+    for: 0m
+    labels: {severity: critical}
+    annotations:
+      summary: "Watchlist hit (critical)"
+      description: "User={{ $labels.user }} Rule={{ $labels.rule }}"
