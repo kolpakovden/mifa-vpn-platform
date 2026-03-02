@@ -206,6 +206,7 @@ Version	Description
 v1.0.0	Initial stable platform
 v1.0.2	Monitoring stabilization
 v1.1.0  Telegram bot + QR + deploy helper
+v1.1.8  Monitoring stabilization + MIFA NOC dashboard
 legacy	Pre-platform experimental builds
 ```
 
