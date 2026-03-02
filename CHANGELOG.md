@@ -1,8 +1,86 @@
-## v1.1.0 — 2026-03-01
-- Telegram admin bot for Xray management (/add /del /list /key /info /restart /status)
-- QR codes for VLESS links
-- Safer config apply (backup → write → xray -test → restart → rollback on failure)
-- mifa-deploy helper (git pull → deps → compile → restart)
+# Changelog
 
-## v1.0.2
+All notable changes to this project will be documented in this file.
+
+The format is based on Keep a Changelog.
+This project adheres to Semantic Versioning.
+
+---
+
+## [1.1.7] - 2026-03-02
+### Changed
+- Cleanup duplicated secrets block in `.gitignore`
+
+---
+
+## [1.1.6] - 2026-03-02
+### Added
+- Track Prometheus alert rules in repository:
+  - `monitoring/prometheus/alerts-mifa.yml`
+
+### Changed
+- Ensure monitoring configuration is fully versioned and reproducible from Git
+
+---
+
+## [1.1.5] - 2026-03-02
+### Added
+- `log-processor/README.md` (build instructions, config location, systemd hints)
+
+---
+
+## [1.1.4] - 2026-03-02
+### Added
+- Alertmanager configuration tracked in repository:
+  - `monitoring/alertmanager/alertmanager.yml`
+- `mifa-log-processor` Go sources
+- Prometheus alert rules (initial packaging)
+
+### Changed
+- Monitoring stack made fully reproducible from repository
+
+---
+
+## [1.1.3] - 2026-03-01
+### Added
+- Telegram alert-router improvements:
+  - Severity-based emoji formatting
+  - Grouping by `user` and `severity`
+  - Optional resolved notifications
+  - `PUBLIC_PROMETHEUS_URL` support
+  - Loki context enrichment for watchlist alerts (domain, geo, ISP)
+- Watchlist critical alert integration (Prometheus → Alertmanager → Telegram)
+
+---
+
+## [1.1.2] - 2026-03-01
+### Changed
+- Make `bot.py` executable
+- Minor Telegram admin bot improvements
+
+---
+
+## [1.1.1] - 2026-03-01
+### Changed
+- Documentation version bump
+
+---
+
+## [1.1.0] - 2026-03-01
+### Added
+- Telegram admin bot for Xray management:
+  - `/add`, `/del`, `/list`, `/key`, `/info`, `/restart`, `/status`
+- QR codes for VLESS links
+- Safe configuration apply workflow:
+  - backup → write → `xray -test` → restart → automatic rollback
+- `mifa-deploy` helper:
+  - git pull → dependencies → compile → restart
+
+---
+
+## [1.0.2] - 2026-02-28
+### Added
 - Initial platform release
+- Xray (VLESS + Reality) automation
+- Basic monitoring stack
+- Monitoring config tracking fixes
