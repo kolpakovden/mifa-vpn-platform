@@ -7,6 +7,30 @@ This project adheres to Semantic Versioning.
 
 ---
 
+
+## [1.1.8] - 2026-03-03
+
+### Added
+- MIFA NOC dashboard (Grafana)
+  - System metrics (CPU, RAM, Disk, Network)
+  - Xray analytics panels:
+    - Accepted / min
+    - Rejected / min
+    - Top users (5m)
+    - Top inbounds (5m)
+    - Top destinations (5m)
+
+### Fixed
+- Grafana dashboard provisioning conflicts (UID duplication)
+- Loki LogQL empty-compatible matcher errors
+- Provisioned dashboard sync issues
+
+### Changed
+- Monitoring stack made stable and fully reproducible
+- Removed legacy `user-activity.json` dashboard
+
+---
+
 ## [1.1.7] - 2026-03-02
 ### Changed
 - Cleanup duplicated secrets block in `.gitignore`
