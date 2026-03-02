@@ -1,6 +1,8 @@
 # env
 .env
 *.env
+*.bak
+*.disabled
 
 # logs
 *.log
@@ -31,3 +33,6 @@ bot/venv/
 
 # secrets
 monitoring/alert-router/alert-router.env
+
+#dns
+dns/
