@@ -1,0 +1,15 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: tg-router
+  group_by: ['alertname', 'severity']
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 2h
+
+receivers:
+  - name: tg-router
+    webhook_configs:
+      - url: http://mifa-alert-router:8080/alertmanager
+        send_resolved: true
