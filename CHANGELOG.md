@@ -7,6 +7,19 @@ This project adheres to Semantic Versioning.
 
 ---
 
+## [1.2.0] - 2026-03-03
+
+### Highlights
+
+- Repository is now public
+- Full history sanitization
+- Monitoring stack stabilization
+- MIFA NOC dashboard (Grafana)
+- Security policy finalized
+- Official status channel: https://t.me/mifanetwork
+
+---
+
 
 ## [1.1.8] - 2026-03-03
 
