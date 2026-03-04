@@ -7,6 +7,18 @@ This project adheres to Semantic Versioning.
 
 ---
 
+## [1.2.2] - 2026-03-04
+
+### Fixed
+- Telegram admin bot: preserve ownership/permissions when updating Xray `config.json` to prevent `permission denied` and failed Xray startups.
+- systemd hardening: bot operations (`/status`, `/restart`) are compatible with a bot-safe sandbox profile (without forcing `NoNewPrivs=1`).
+
+### Added
+- Documentation updates: architecture, commands and runbook pages for operations and troubleshooting.
+- Hardening notes for `NoNewPrivs` / sandbox directives that can break `sudo`.
+
+---
+
 ## [1.2.0] - 2026-03-03
 
 ### Highlights
@@ -19,7 +31,6 @@ This project adheres to Semantic Versioning.
 - Official status channel: https://t.me/mifanetwork
 
 ---
-
 
 ## [1.1.8] - 2026-03-03
 
