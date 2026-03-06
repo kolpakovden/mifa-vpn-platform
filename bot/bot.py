@@ -20,12 +20,24 @@ import os
 import re
 import subprocess
 import tempfile
+import pwd
+import grp
 import traceback
 import uuid
 from io import BytesIO
 import qrcode
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
+import logging
+
+logging.basicConfig(
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    level=logging.INFO,
+)
+
+logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.INFO)
 
 try:
     from dotenv import load_dotenv
@@ -70,6 +82,9 @@ if _admins_raw:
             ADMIN_IDS.add(int(x))
 
 CONFIG_PATH = os.getenv("XRAY_CONFIG") or os.getenv("CONFIG_PATH") or "/usr/local/etc/xray/config.json"
+CFG_OWNER = os.getenv("XRAY_CFG_OWNER", "xray")
+CFG_GROUP = os.getenv("XRAY_CFG_GROUP", "xray")
+CFG_MODE = int(os.getenv("XRAY_CFG_MODE", "640"), 8)
 XRAY_SERVICE = os.getenv("XRAY_SERVICE", "xray")
 
 SERVER_HOST = os.getenv("SERVER_HOST") or os.getenv("SERVER_IP") or "127.0.0.1"
@@ -105,17 +120,36 @@ def load_config() -> Dict[str, Any]:
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
-
 def atomic_write_json(path: str, data: Dict[str, Any]) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
+
+    uid = pwd.getpwnam(CFG_OWNER).pw_uid
+    gid = grp.getgrnam(CFG_GROUP).gr_gid
+
     with tempfile.NamedTemporaryFile("w", delete=False, dir=str(p.parent), encoding="utf-8") as tf:
         json.dump(data, tf, ensure_ascii=False, indent=2)
         tf.flush()
         os.fsync(tf.fileno())
         tmp_name = tf.name
+
+    # закрепляем права/владельца на tmp (чтобы replace не “утащил” 0600)
+    try:
+        os.chown(tmp_name, uid, gid)
+    except PermissionError:
+        pass
+
+    os.chmod(tmp_name, CFG_MODE)
+
     os.replace(tmp_name, path)
 
+    # и на целевом тоже (на всякий)
+    try:
+        os.chown(path, uid, gid)
+    except PermissionError:
+        pass
+
+    os.chmod(path, CFG_MODE)
 
 def xray_test_config() -> Tuple[bool, str]:
     rc, out = run(["xray", "run", "-test", "-config", CONFIG_PATH])
@@ -125,18 +159,17 @@ def xray_test_config() -> Tuple[bool, str]:
 
 
 def restart_xray() -> Tuple[bool, str]:
-    rc, out = run(["systemctl", "restart", XRAY_SERVICE])
+    rc, out = run(["/bin/systemctl", "start", "mifa-xray-restart.service"])
     return (rc == 0), (out or "")
 
 
 def get_status_xray() -> str:
-    rc, out = run(["systemctl", "is-active", XRAY_SERVICE])
+    rc, out = run(["/bin/systemctl", "is-active", "xray"])
     return out if rc == 0 else (out or "unknown")
 
 
 def find_vless_inbounds(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     return [ib for ib in (cfg.get("inbounds", []) or []) if ib.get("protocol") == "vless"]
-
 
 def extract_reality_from_any_inbound(cfg: Dict[str, Any]) -> Dict[str, str]:
     for ib in cfg.get("inbounds", []) or []:
@@ -501,7 +534,7 @@ async def get_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # ---- Текстовый вывод ----
         title = f"Ключи для {alias}:"
-        await safe_reply(update, f"{title}\n\n```\n{keys}\n```")
+        await safe_reply(update, f"{title}\n\n```\n{keys}\n```", parse_mode="Markdown")
 
     await run_safe(update, inner)
 
@@ -546,13 +579,21 @@ async def info_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await run_safe(update, inner)
 
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    logger.exception("Unhandled bot exception", exc_info=context.error)
 
-def main() -> None:
-    if not BOT_TOKEN:
-        print("BOT_TOKEN не найден (проверь /etc/mifa/bot.env)")
-        return
+def build_app() -> Application:
+    app = (
+        Application.builder()
+        .token(BOT_TOKEN)
+        .connect_timeout(10)
+        .read_timeout(30)
+        .write_timeout(30)
+        .pool_timeout(10)
+        .build()
+    )
 
-    app = Application.builder().token(BOT_TOKEN).build()
+    app.add_error_handler(error_handler)
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", start))
@@ -564,7 +605,15 @@ def main() -> None:
     app.add_handler(CommandHandler("restart", restart_cmd))
     app.add_handler(CommandHandler("status", status_cmd))
 
-    print("Бот запущен...")
+    return app
+
+def main() -> None:
+    if not BOT_TOKEN:
+        logger.error("BOT_TOKEN не найден (проверь /etc/mifa/bot.env)")
+        return
+
+    app = build_app()
+    logger.info("Бот запущен...")
     app.run_polling(drop_pending_updates=True)
 
 
