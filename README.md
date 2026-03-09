@@ -170,6 +170,8 @@ Node Exporter	http://SERVER_IP:9100
 ```
 Grafana: admin credentials are configured during installation.
 
+It is recommended to restrict Prometheus, Loki and Node Exporter via firewall.
+
 ### Loki Storage
 
 Single-node mode.
