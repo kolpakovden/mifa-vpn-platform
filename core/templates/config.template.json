@@ -36,12 +36,13 @@
           "xver": 0,
           "spiderX": "/",
           "serverNames": [
-            "__SNI__"
+            "www.academia.edu",
+            "www.researchgate.net",
+            "www.jstor.org",
+            "www.sciencedirect.com"
           ],
           "privateKey": "__PRIVATE_KEY__",
-          "shortIds": [
-            "__SHORT_ID__"
-          ]
+          "shortIds": ["__SHORT_ID__"]
         }
       },
       "sniffing": {
@@ -73,12 +74,13 @@
           "xver": 0,
           "spiderX": "/",
           "serverNames": [
-            "__SNI__"
+            "www.academia.edu",
+            "www.researchgate.net",
+            "www.jstor.org",
+            "www.sciencedirect.com"
           ],
           "privateKey": "__PRIVATE_KEY__",
-          "shortIds": [
-            "__SHORT_ID__"
-          ]
+          "shortIds": ["__SHORT_ID__"]
         }
       },
       "sniffing": {
