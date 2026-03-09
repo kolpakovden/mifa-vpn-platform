@@ -168,10 +168,8 @@ Prometheus	http://SERVER_IP:9090
 Loki	http://SERVER_IP:3100
 Node Exporter	http://SERVER_IP:9100
 ```
-Default Grafana credentials:
-```
-admin / admin
-```
+Grafana: admin credentials are configured during installation.
+
 ### Loki Storage
 
 Single-node mode.
