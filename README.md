@@ -256,9 +256,6 @@ Planned:
 
 ---
 
-Спасибо вам. Этот проект существует благодаря вам 🤍
----
-
 ## ⚠️ Disclaimer
 For educational and private infrastructure use only.
 Ensure compliance with local laws.
