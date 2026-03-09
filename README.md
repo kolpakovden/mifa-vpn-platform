@@ -18,7 +18,7 @@ MIFA VPN is available in two editions:
 ## Features
 
 - Xray Core (VLESS + Reality)
-- Multi-port configuration (443, 8443, 2053, 2083, 50273)
+- Multi-port configuration (8443, 50273)
 - Telegram bot for user lifecycle management
 - Centralized state handling
 - Monitoring stack (Grafana + Prometheus + Loki + Promtail)
