@@ -1,5 +1,11 @@
 # MIFA VPN Platform
 
+![Version](https://img.shields.io/badge/version-1.2.4-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Last Commit](https://img.shields.io/github/last-commit/kolpakovden/mifa-vpn-platform)
+![Repo Size](https://img.shields.io/github/repo-size/kolpakovden/mifa-vpn-platform)
+![Stars](https://img.shields.io/github/stars/kolpakovden/mifa-vpn-platform)
+
 MIFA VPN is available in two editions:
 
 - **Platform (current)** — modular architecture with monitoring stack and Telegram control layer.
