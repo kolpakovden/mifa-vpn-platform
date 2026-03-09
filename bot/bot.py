@@ -90,7 +90,7 @@ XRAY_SERVICE = os.getenv("XRAY_SERVICE", "xray")
 SERVER_HOST = os.getenv("SERVER_HOST") or os.getenv("SERVER_IP") or "127.0.0.1"
 PUBLIC_KEY = os.getenv("PUBLIC_KEY", "")
 SHORT_ID = os.getenv("SHORT_ID", "")
-DEFAULT_SNI = os.getenv("DEFAULT_SNI", "www.github.com")
+DEFAULT_SNI = os.getenv("DEFAULT_SNI", "www.academia.edu")
 
 
 def _parse_ports(s: str) -> List[int]:
