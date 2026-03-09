@@ -53,6 +53,7 @@ s = cfg.read_text()
 s = s.replace("__UUID__", "$UUID")
 s = s.replace("__PRIVATE_KEY__", "$PRIVATE")
 s = s.replace("__SHORT_ID__", "$SHORT")
+s = s.replace("__TARGET__", "$MIFA_DEFAULT_TARGET")
 cfg.write_text(s)
 PY
 
@@ -75,8 +76,9 @@ SERVER_IP=${SERVER_IP}
 PUBLIC_KEY=${PUBLIC_KEY}
 SHORT_ID=${SHORT_ID}
 # Used by bot if not overridden
-DEFAULT_SNI=www.github.com
-PORTS=8443,50273
+DEFAULT_SNI=${MIFA_DEFAULT_SNI}
+PORTS=${MIFA_DEFAULT_PORTS}
+TARGET=${MIFA_DEFAULT_TARGET}
 EOF
 
   chmod 600 /etc/mifa/state.env
@@ -96,8 +98,9 @@ CONFIG_PATH=/usr/local/etc/xray/config.json
 SERVER_IP=127.0.0.1
 PUBLIC_KEY=
 SHORT_ID=${SHORT}
-DEFAULT_SNI=www.github.com
-PORTS=8443,50273
+DEFAULT_SNI=${MIFA_DEFAULT_SNI}
+PORTS=${MIFA_DEFAULT_PORTS}
+TARGET=${MIFA_DEFAULT_TARGET}
 EOF
   chmod 600 /etc/mifa/state.env
 }
