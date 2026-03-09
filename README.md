@@ -34,7 +34,7 @@ MIFA VPN is available in two editions:
   
 ---
 
-## Architecture Overview (v1.1.0)
+## Architecture Overview
 
 MIFA Platform is a layered VPN infrastructure consisting of:
 - **Traffic Layer** — Xray (VLESS + Reality)
@@ -211,10 +211,10 @@ MAJOR.MINOR.PATCH
 Version	Description
 v1.0.0	Initial stable platform
 v1.0.2	Monitoring stabilization
-v1.1.0  Telegram bot + QR + deploy helper
-v1.1.8  Monitoring stabilization + MIFA NOC dashboard
-v1.2.0  Public infrastructure milestone release
-legacy	Pre-platform experimental builds
+v1.1.0	Telegram bot + QR + deploy helper
+v1.1.8	Monitoring stabilization + MIFA NOC dashboard
+v1.2.0	Public infrastructure milestone release
+v1.2.4	Configuration synchronization and platform stabilization
 ```
 
 ---
@@ -234,7 +234,7 @@ Planned:
 
 ## Edition Comparison
 
-| Feature | Platform (v1.1.0) | Basic (v1.0.1) |
+| Feature | Platform | Basic |
 |----------|------------------|----------------|
 | Architecture | Modular | Monolithic |
 | Xray (VLESS + Reality) | ✅ | ✅ |
