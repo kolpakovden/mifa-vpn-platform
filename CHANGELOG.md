@@ -6,6 +6,23 @@ The format is based on Keep a Changelog.
 This project adheres to Semantic Versioning.
 
 ---
+## [1.2.4] - 2026-03-09
+
+### Changed
+- Simplified Reality configuration
+- Default ports reduced to 8443 and 50273
+- Updated default SNI to www.academia.edu
+
+### Fixed
+- Fixed PUBLIC_KEY generation for newer Xray builds
+- Synced bot defaults with platform configuration
+- Fixed state.env drift between installer and runtime
+
+### Docs
+- Updated README configuration
+- Clarified Grafana credentials behavior
+- 
+---
 
 ## [1.2.2] - 2026-03-04
 
