@@ -1,3 +1,7 @@
+MIFA_DEFAULT_TARGET="www.academia.edu:443"
+MIFA_DEFAULT_SNI="www.academia.edu"
+MIFA_DEFAULT_PORTS="8443,50273"
+
 install_core() {
   echo "Installing Xray..."
 
