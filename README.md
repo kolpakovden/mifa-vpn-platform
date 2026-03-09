@@ -203,7 +203,8 @@ Monitoring images are pinned for reproducible deployments and config compatibili
 ---
 
 ## Versioning
-Semantic Versioning:
+This project follows **Semantic Versioning (SemVer)**.
+Version format:
 ```
 MAJOR.MINOR.PATCH
 ```
