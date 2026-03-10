@@ -17,6 +17,7 @@ Safety:
 
 import json
 import os
+import random
 import re
 import subprocess
 import tempfile
@@ -91,6 +92,14 @@ SERVER_HOST = os.getenv("SERVER_HOST") or os.getenv("SERVER_IP") or "127.0.0.1"
 PUBLIC_KEY = os.getenv("PUBLIC_KEY", "")
 SHORT_ID = os.getenv("SHORT_ID", "")
 DEFAULT_SNI = os.getenv("DEFAULT_SNI", "www.academia.edu")
+SNI_POOL = os.getenv(
+    "SNI_POOL",
+    "www.academia.edu,www.researchgate.net,www.jstor.org,www.sciencedirect.com"
+)
+
+def pick_sni():
+    candidates = [item.strip() for item in SNI_POOL.split(",") if item.strip()]
+    return random.choice(candidates) if candidates else DEFAULT_SNI
 
 
 def _parse_ports(s: str) -> List[int]:
@@ -355,7 +364,7 @@ async def add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keys = ""
         if PUBLIC_KEY and SHORT_ID:
             keys = "\n".join(
-                [generate_vless_link(new_uuid, alias, p, DEFAULT_SNI, PUBLIC_KEY, SHORT_ID) for p in DEFAULT_PORTS]
+                [generate_vless_link(new_uuid, alias, p, pick_sni(), PUBLIC_KEY, SHORT_ID) for p in DEFAULT_PORTS]
             )
 
         msg = (
@@ -503,7 +512,7 @@ async def get_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     user["id"],
                     user["email"],
                     p,
-                    DEFAULT_SNI,
+                    pick_sni(),
                     PUBLIC_KEY,
                     SHORT_ID
                 )
@@ -517,7 +526,7 @@ async def get_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 user["id"],
                 user["email"],
                 p,
-                DEFAULT_SNI,
+                pick_sni(),
                 PUBLIC_KEY,
                 SHORT_ID
             )
