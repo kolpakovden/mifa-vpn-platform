@@ -1,10 +1,11 @@
 {
   "dns": {
     "servers": [
-      "https+local://8.8.8.8/dns-query",
       "https+local://1.1.1.1/dns-query",
-      "localhost"
-    ]
+      "https+local://dns10.quad9.net/dns-query",
+      "8.8.8.8"
+    ],
+    "queryStrategy": "UseIPv4"
   },
   "log": {
     "loglevel": "info",
@@ -42,12 +43,18 @@
             "www.sciencedirect.com"
           ],
           "privateKey": "__PRIVATE_KEY__",
-          "shortIds": ["__SHORT_ID__"]
+          "shortIds": [
+            "__SHORT_ID__"
+          ]
         }
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls", "quic"]
+        "destOverride": [
+          "http",
+          "tls",
+          "quic"
+        ]
       }
     },
     {
@@ -80,12 +87,18 @@
             "www.sciencedirect.com"
           ],
           "privateKey": "__PRIVATE_KEY__",
-          "shortIds": ["__SHORT_ID__"]
+          "shortIds": [
+            "__SHORT_ID__"
+          ]
         }
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls", "quic"]
+        "destOverride": [
+          "http",
+          "tls",
+          "quic"
+        ]
       }
     }
   ],
@@ -101,5 +114,23 @@
       "protocol": "blackhole",
       "tag": "block"
     }
-  ]
+  ],
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "domain": [
+          "geosite:win-spy"
+        ],
+        "outboundTag": "block"
+      },
+      {
+        "type": "field",
+        "ip": [
+          "geoip:private"
+        ],
+        "outboundTag": "block"
+      }
+    ]
+  }
 }
