@@ -1,3 +1,9 @@
+⚠️ PROJECT ARCHIVED / DEVELOPMENT STOPPED
+This repository represents the legacy MIFA VPN Platform architecture and is no longer actively developed.
+Development has moved to a simplified production architecture without the Grafana/Prometheus/Loki monitoring stack.
+
+
+
 # MIFA VPN Platform
 
 ![Version](https://img.shields.io/badge/version-1.2.4-blue)
