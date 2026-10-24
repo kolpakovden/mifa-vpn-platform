@@ -8,7 +8,7 @@
 
 ![Version](https://img.shields.io/badge/legacy_version-1.2.4-blue)
 ![Status](https://img.shields.io/badge/status-archived-lightgrey)
-![License](https://img.shields.io/badge/license-MIT-green)
+[![License](https://img.shields.io/badge/license-Free_Noncommercial-blue)](LICENSE)
 
 ## Why the architecture was retired
 
@@ -114,10 +114,22 @@ These people were with the project during its early versions, tested legacy buil
 
 ## Disclaimer
 
-Intended for educational and infrastructure automation purposes. Ensure compliance with local laws. Usage rights are governed by the MIT License.
+Intended for educational and infrastructure automation purposes. Ensure compliance with local laws. Usage rights are described in LICENSE, including the preservation of earlier MIT grants.
 
 ## License
 
-This repository's original code, configuration templates and documentation are licensed under the [MIT License](LICENSE). Keep the copyright and permission notice when redistributing copies or substantial portions.
+Цель проекта — **бесплатная доступность для всех без коммерческой эксплуатации**.
 
-Third-party software and any third-party materials retain their own licenses and copyright notices. This license does not relicense Xray, Grafana, Loki or other dependencies.
+С 24 октября 2026 года новые разрешения на собственные материалы проекта предоставляются по [MIFA Free Noncommercial License 1.0](LICENSE).
+
+- Разрешены бесплатное некоммерческое использование, изучение, изменение и бесплатное распространение.
+- Необходимо сохранять уведомления об авторстве, текст лицензии и ссылку на этот репозиторий; изменения нужно обозначать.
+- Запрещены продажа проекта и производных, платный VPN и другие монетизируемые сервисы на их основе.
+- Запрещены платные установка, настройка, размещение, сопровождение, поддержка, консультации и обучение по проекту.
+- Оплата собственного сервера или подключения независимому провайдеру для разрешённого некоммерческого использования допускается.
+
+**Ранее выданные права MIT сохраняются.** Код и другие материалы, ранее опубликованные под MIT, можно продолжать использовать по MIT, включая коммерческое использование. Замена лицензии не делает прежний код исключительно некоммерческим. Это особенно существенно для архивных версий, где новых разработок может не быть.
+
+Сторонние компоненты и материалы сохраняют собственные лицензии и авторство. Условия этого репозитория не заменяют лицензии Xray, Grafana, Loki и других зависимостей.
+
+Это собственная некоммерческая лицензия с доступными исходниками, а не MIT и не стандартная open source лицензия. Материалы предоставляются «как есть», без гарантий.
