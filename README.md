@@ -114,4 +114,10 @@ These people were with the project during its early versions, tested legacy buil
 
 ## Disclaimer
 
-For educational and private infrastructure use only. Ensure compliance with local laws.
+Intended for educational and infrastructure automation purposes. Ensure compliance with local laws. Usage rights are governed by the MIT License.
+
+## License
+
+This repository's original code, configuration templates and documentation are licensed under the [MIT License](LICENSE). Keep the copyright and permission notice when redistributing copies or substantial portions.
+
+Third-party software and any third-party materials retain their own licenses and copyright notices. This license does not relicense Xray, Grafana, Loki or other dependencies.
